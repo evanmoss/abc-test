@@ -76,6 +76,14 @@ function triggerSound(index) {
  */
 function speakLetterFallback(letter, word) {
     const ssu = new SpeechSynthesisUtterance(`${letter}! ${letter} is for ${word}!`);
+
+    // Pick a random voice
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length > 0) {
+        const randomVoice = voices[Math.floor(Math.random() * voices.length)];
+        ssu.voice = randomVoice;
+    }
+
     ssu.rate = 0.85;
     ssu.pitch = 1.3;
     window.speechSynthesis.cancel();
