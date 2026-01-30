@@ -50,7 +50,6 @@ const transitionOverlay = document.getElementById('transition-overlay');
 
 /**
  * Play sound synchronously within the user gesture context.
- * iOS Safari requires the .play() call to happen IMMEDIATELY in the click handler.
  */
 function triggerSound(index) {
     const pair = mediaPairs[index];
@@ -65,14 +64,16 @@ function triggerSound(index) {
 
     if (playPromise !== undefined) {
         playPromise.catch(error => {
-            console.log("Audio file playback failed, trying speech fallback:", error);
-            // Speech synthesis also needs to be in gesture context, 
-            // but we're still inside the click event here.
+            console.log("Audio file blocked or missing, trying speech fallback:", error);
             speakLetterFallback(pair.letter, pair.word);
         });
     }
 }
 
+/**
+ * Fallback to Speech Synthesis.
+ * Note: On iOS, this MUST be triggered during the user swipe/click.
+ */
 function speakLetterFallback(letter, word) {
     const ssu = new SpeechSynthesisUtterance(`${letter}! ${letter} is for ${word}!`);
     ssu.rate = 0.85;
@@ -82,26 +83,32 @@ function speakLetterFallback(letter, word) {
 }
 
 /**
- * Initial "Unlock" for iOS
+ * Initial "Unlock" for iOS.
+ * Triggers both an empty speech and the first audio play to satisfy Safari's gesture requirements.
  */
 function unlockAudio() {
     if (audioUnlocked) return;
 
-    // Play a tiny silent buffer or the first sound
+    // 1. Unlocking SpeechSynthesis (the "empty speak" trick)
+    const silentSpeak = new SpeechSynthesisUtterance('');
+    silentSpeak.volume = 0;
+    window.speechSynthesis.speak(silentSpeak);
+
+    // 2. Unlocking HTML5 Audio
     triggerSound(currentIndex);
+
     audioUnlocked = true;
-    console.log("Audio Unlocked");
+    console.log("Speech & Audio Unlocked for Safari");
 }
 
 function goToImage(index) {
     if (isTransitioning) return;
     isTransitioning = true;
 
-    // 1. Play sound IMMEDIATELY (while still in user gesture context)
-    // We don't wait for the fade because Safari will block it if we do.
+    // Trigger sound IMMEDIATELY in gesture context
     triggerSound(index);
 
-    // 2. Perform visual transition
+    // Visual transition
     transitionOverlay.classList.add('active');
     mainImage.classList.add('fade-out');
 
@@ -131,11 +138,10 @@ function loadCurrentImage() {
 }
 
 function handleClick(e) {
-    // Required for iOS Safari:
-    // Any audio playback MUST be triggered synchronously in the click handler.
-
+    // Safari restriction: all playback must start synchronously in the click handler
     if (!audioUnlocked) {
         unlockAudio();
+        // Stay on first letter for the first click to allow user to hear 'A'
         return;
     }
 
@@ -149,7 +155,7 @@ function init() {
     loadCurrentImage();
     imageContainer.addEventListener('click', handleClick);
 
-    // Handle Space/Arrow keys
+    // Handle Space/Arrow keys (will also attempt unlock)
     document.addEventListener('keydown', (e) => {
         if (!audioUnlocked) unlockAudio();
 
@@ -158,15 +164,15 @@ function init() {
             goToImage((currentIndex + 1) % mediaPairs.length);
         } else if (e.key === 'ArrowLeft') {
             e.preventDefault();
-            goToImage((currentIndex - 1 + mediaPairs.length) % mediaPairs.length);
+            const prevIndex = (currentIndex - 1 + mediaPairs.length) % mediaPairs.length;
+            goToImage(prevIndex);
         }
     });
 }
 
-// Start when DOM is ready
 document.addEventListener('DOMContentLoaded', init);
 
-// Prevent dragging/scrolling on the entire page (iOS bounce fix)
+// Prevent dragging/scrolling (iOS bounce fix)
 document.addEventListener('touchmove', (e) => {
-    if (e.scale !== 1) e.preventDefault(); // allow pinch zoom if desired, but prevent pan
+    if (e.scale !== 1) e.preventDefault();
 }, { passive: false });
