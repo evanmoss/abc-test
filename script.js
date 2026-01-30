@@ -42,8 +42,13 @@ let audioUnlocked = false;
 // Pre-load voices for browsers that support it
 let voices = [];
 function loadVoices() {
-    voices = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
-    if (voices.length === 0) voices = window.speechSynthesis.getVoices();
+    // Strictly English only (en-US, en-GB, en-AU, etc.)
+    const allVoices = window.speechSynthesis.getVoices();
+    voices = allVoices.filter(v => v.lang.toLowerCase().startsWith('en'));
+
+    if (voices.length > 0) {
+        console.log(`Loaded ${voices.length} English voices`);
+    }
 }
 loadVoices();
 if (window.speechSynthesis.onvoiceschanged !== undefined) {
