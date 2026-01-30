@@ -46,7 +46,6 @@ let currentAudio = null;
 const mainImage = document.getElementById('main-image');
 const imageContainer = document.getElementById('image-container');
 const transitionOverlay = document.getElementById('transition-overlay');
-const progressDots = document.getElementById('progress-dots');
 
 // Play the letter sound
 function playLetterSound(soundPath, letter, word) {
@@ -81,48 +80,10 @@ function speakLetterFallback(letter, word) {
     speechSynthesis.speak(utterance);
 }
 
-// Create visual feedback for sound
-function showSoundWave() {
-    const wave = document.createElement('div');
-    wave.className = 'sound-wave';
-    imageContainer.appendChild(wave);
-
-    setTimeout(() => wave.remove(), 800);
-}
-
-// Create progress dots
-function createProgressDots() {
-    progressDots.innerHTML = '';
-    mediaPairs.forEach((item, index) => {
-        const dot = document.createElement('div');
-        dot.className = 'progress-dot' + (index === 0 ? ' active' : '');
-        dot.title = item.letter;
-        dot.textContent = item.letter;
-        dot.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (!isTransitioning && index !== currentIndex) {
-                goToImage(index);
-            }
-        });
-        progressDots.appendChild(dot);
-    });
-}
-
-// Update progress dots
-function updateProgressDots() {
-    const dots = progressDots.querySelectorAll('.progress-dot');
-    dots.forEach((dot, index) => {
-        dot.classList.toggle('active', index === currentIndex);
-    });
-}
-
 // Go to specific image
 function goToImage(index) {
     if (isTransitioning) return;
     isTransitioning = true;
-
-    // Show sound wave animation
-    showSoundWave();
 
     // Fade out current image
     transitionOverlay.classList.add('active');
@@ -131,7 +92,6 @@ function goToImage(index) {
     setTimeout(() => {
         currentIndex = index;
         loadCurrentImage();
-        updateProgressDots();
 
         // Play the letter sound after transition
         const currentPair = mediaPairs[currentIndex];
@@ -166,16 +126,12 @@ function loadCurrentImage() {
 function handleClick(e) {
     if (isTransitioning) return;
 
-    // Prevent click on progress dots from advancing
-    if (e.target.classList.contains('progress-dot')) return;
-
     const nextIndex = (currentIndex + 1) % mediaPairs.length;
     goToImage(nextIndex);
 }
 
 // Initialize
 function init() {
-    createProgressDots();
     loadCurrentImage();
 
     // Play the first letter sound

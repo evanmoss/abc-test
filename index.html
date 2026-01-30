@@ -1,25 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Sound Gallery</title>
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#764ba2">
+    <title>ABC Learning App</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="apple-touch-icon" href="assets/letter_a.png">
 </head>
+
 <body>
     <div id="app">
         <div id="image-container">
             <img id="main-image" src="" alt="Click to play sound and see next image">
-            <div id="click-indicator">
-                <span class="pulse-ring"></span>
-                <span class="click-text">Click</span>
-            </div>
         </div>
         <div id="transition-overlay"></div>
-        <div id="progress-bar">
-            <div id="progress-dots"></div>
-        </div>
     </div>
     <script src="script.js"></script>
 </body>
+
 </html>
