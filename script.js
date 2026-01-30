@@ -163,4 +163,10 @@ function init() {
     });
 }
 
+// Start when DOM is ready
 document.addEventListener('DOMContentLoaded', init);
+
+// Prevent dragging/scrolling on the entire page (iOS bounce fix)
+document.addEventListener('touchmove', (e) => {
+    if (e.scale !== 1) e.preventDefault(); // allow pinch zoom if desired, but prevent pan
+}, { passive: false });

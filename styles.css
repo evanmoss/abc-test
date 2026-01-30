@@ -10,6 +10,10 @@ body {
     height: 100%;
     overflow: hidden;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+    position: fixed;
+    /* Prevent scrolling/bounce on mobile */
+    touch-action: none;
+    /* Disable all gestures like pinch/zoom/pan */
 }
 
 #app {
