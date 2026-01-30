@@ -1,31 +1,31 @@
 // Alphabet configuration
 const alphabetData = [
-    { letter: 'A', word: 'Allosaurus', voice: 'elmo' },
-    { letter: 'B', word: 'Banana', voice: 'bond' },
-    { letter: 'C', word: 'Cat', voice: 'cookiemonster' },
-    { letter: 'D', word: 'Diplodocus', voice: 'elmo' },
-    { letter: 'E', word: 'Elephant', voice: 'bond' },
-    { letter: 'F', word: 'Fruit', voice: 'bigbird' },
-    { letter: 'G', word: 'Giraffe', voice: 'grover' },
-    { letter: 'H', word: 'Hedgehog', voice: 'bond' },
-    { letter: 'I', word: 'Iguana', voice: 'elmo' },
-    { letter: 'J', word: 'Jam', voice: 'cookiemonster' },
-    { letter: 'K', word: 'Kangaroo', voice: 'bond' },
-    { letter: 'L', word: 'Lemon', voice: 'bigbird' },
-    { letter: 'M', word: 'Monkey', voice: 'grover' },
-    { letter: 'N', word: 'Narwhal', voice: 'elmo' },
-    { letter: 'O', word: 'Orange', voice: 'bond' },
-    { letter: 'P', word: 'Panda', voice: 'cookiemonster' },
-    { letter: 'Q', word: 'Quail', voice: 'bigbird' },
-    { letter: 'R', word: 'Raptor', voice: 'bond' },
-    { letter: 'S', word: 'Snake', voice: 'grover' },
-    { letter: 'T', word: 'T-Rex', voice: 'elmo' },
-    { letter: 'U', word: 'Unicorn', voice: 'bigbird' },
-    { letter: 'V', word: 'Velociraptor', voice: 'bond' },
-    { letter: 'W', word: 'Watermelon', voice: 'cookiemonster' },
-    { letter: 'X', word: 'Fox', voice: 'grover' },
-    { letter: 'Y', word: 'Yak', voice: 'elmo' },
-    { letter: 'Z', word: 'Zebra', voice: 'bond' }
+    { letter: 'A', word: 'Allosaurus' },
+    { letter: 'B', word: 'Banana' },
+    { letter: 'C', word: 'Cat' },
+    { letter: 'D', word: 'Diplodocus' },
+    { letter: 'E', word: 'Elephant' },
+    { letter: 'F', word: 'Fruit' },
+    { letter: 'G', word: 'Giraffe' },
+    { letter: 'H', word: 'Hedgehog' },
+    { letter: 'I', word: 'Iguana' },
+    { letter: 'J', word: 'Jam' },
+    { letter: 'K', word: 'Kangaroo' },
+    { letter: 'L', word: 'Lemon' },
+    { letter: 'M', word: 'Monkey' },
+    { letter: 'N', word: 'Narwhal' },
+    { letter: 'O', word: 'Orange' },
+    { letter: 'P', word: 'Panda' },
+    { letter: 'Q', word: 'Quail' },
+    { letter: 'R', word: 'Raptor' },
+    { letter: 'S', word: 'Snake' },
+    { letter: 'T', word: 'T-Rex' },
+    { letter: 'U', word: 'Unicorn' },
+    { letter: 'V', word: 'Velociraptor' },
+    { letter: 'W', word: 'Watermelon' },
+    { letter: 'X', word: 'Fox' },
+    { letter: 'Y', word: 'Yak' },
+    { letter: 'Z', word: 'Zebra' }
 ];
 
 const mediaPairs = alphabetData.map(item => ({
@@ -38,6 +38,17 @@ const mediaPairs = alphabetData.map(item => ({
 let currentIndex = 0;
 let isTransitioning = false;
 let audioUnlocked = false;
+
+// Pre-load voices for browsers that support it
+let voices = [];
+function loadVoices() {
+    voices = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
+    if (voices.length === 0) voices = window.speechSynthesis.getVoices();
+}
+loadVoices();
+if (window.speechSynthesis.onvoiceschanged !== undefined) {
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+}
 
 // Persistent Audio Element (Crucial for iOS)
 const audioPlayer = new Audio();
@@ -77,18 +88,22 @@ function triggerSound(index) {
 function speakLetterFallback(letter, word) {
     const ssu = new SpeechSynthesisUtterance(`${letter}! ${letter} is for ${word}!`);
 
-    // Pick a random voice
-    const voices = window.speechSynthesis.getVoices();
+    // Ensure we have voices
+    if (voices.length === 0) loadVoices();
+
+    // Pick a random voice if available
     if (voices.length > 0) {
-        const randomVoice = voices[Math.floor(Math.random() * voices.length)];
-        ssu.voice = randomVoice;
+        ssu.voice = voices[Math.floor(Math.random() * voices.length)];
     }
 
-    ssu.rate = 0.85;
-    ssu.pitch = 1.3;
+    // Even if there's only one voice, randomize pitch and rate for variety!
+    ssu.rate = 0.7 + Math.random() * 0.4;  // Random rate between 0.7 and 1.1
+    ssu.pitch = 0.8 + Math.random() * 1.0; // Random pitch between 0.8 and 1.8
+
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(ssu);
 }
+
 
 /**
  * Initial "Unlock" for iOS.
