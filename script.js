@@ -1,5 +1,4 @@
-// Alphabet configuration with themed inspirations
-// Each letter has a word and voice style for the audio
+// Alphabet configuration
 const alphabetData = [
     { letter: 'A', word: 'Allosaurus', voice: 'elmo' },
     { letter: 'B', word: 'Banana', voice: 'bond' },
@@ -29,80 +28,80 @@ const alphabetData = [
     { letter: 'Z', word: 'Zebra', voice: 'bond' }
 ];
 
-// Build mediaPairs from alphabet data
 const mediaPairs = alphabetData.map(item => ({
     letter: item.letter,
     image: `assets/letter_${item.letter.toLowerCase()}.png`,
     sound: `assets/sounds/letter_${item.letter.toLowerCase()}.mp3`,
-    word: item.word,
-    voice: item.voice
+    word: item.word
 }));
 
 let currentIndex = 0;
 let isTransitioning = false;
-let currentAudio = null;
 let audioUnlocked = false;
+
+// Persistent Audio Element (Crucial for iOS)
+const audioPlayer = new Audio();
+audioPlayer.preload = 'auto';
 
 // DOM Elements
 const mainImage = document.getElementById('main-image');
 const imageContainer = document.getElementById('image-container');
 const transitionOverlay = document.getElementById('transition-overlay');
 
-// Play the letter sound
-// IMPORTANT: For Mobile Safari, this must be called directly from a user gesture (click/tap)
-function playLetterSound(soundPath, letter, word) {
-    // Stop any current audio
-    if (currentAudio) {
-        currentAudio.pause();
-        currentAudio.currentTime = 0;
-    }
+/**
+ * Play sound synchronously within the user gesture context.
+ * iOS Safari requires the .play() call to happen IMMEDIATELY in the click handler.
+ */
+function triggerSound(index) {
+    const pair = mediaPairs[index];
 
-    // Try to play the audio file
-    currentAudio = new Audio(soundPath);
-    currentAudio.volume = 1.0;
+    // Stop current
+    audioPlayer.pause();
 
-    const playPromise = currentAudio.play();
+    // Set new source and play
+    audioPlayer.src = pair.sound;
+
+    const playPromise = audioPlayer.play();
 
     if (playPromise !== undefined) {
         playPromise.catch(error => {
-            // If audio file doesn't exist or is blocked, fall back to speech synthesis
-            console.log('Audio playback blocked or file not found:', error);
-            speakLetterFallback(letter, word);
+            console.log("Audio file playback failed, trying speech fallback:", error);
+            // Speech synthesis also needs to be in gesture context, 
+            // but we're still inside the click event here.
+            speakLetterFallback(pair.letter, pair.word);
         });
     }
 }
 
-// Fallback to speech synthesis
 function speakLetterFallback(letter, word) {
-    const speechSynthesis = window.speechSynthesis;
-    speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance();
-    utterance.text = `${letter}! ${letter} is for ${word}!`;
-    utterance.rate = 0.85;
-    utterance.pitch = 1.3;
-    utterance.volume = 1.0;
-
-    speechSynthesis.speak(utterance);
+    const ssu = new SpeechSynthesisUtterance(`${letter}! ${letter} is for ${word}!`);
+    ssu.rate = 0.85;
+    ssu.pitch = 1.3;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(ssu);
 }
 
-// Unlock audio for Safari (plays current sound once to grant permission)
+/**
+ * Initial "Unlock" for iOS
+ */
 function unlockAudio() {
     if (audioUnlocked) return;
 
-    // Play the current letter sound immediately
-    const currentPair = mediaPairs[currentIndex];
-    playLetterSound(currentPair.sound, currentPair.letter, currentPair.word);
-
+    // Play a tiny silent buffer or the first sound
+    triggerSound(currentIndex);
     audioUnlocked = true;
+    console.log("Audio Unlocked");
 }
 
-// Go to specific image
 function goToImage(index) {
     if (isTransitioning) return;
     isTransitioning = true;
 
-    // Fade out current image
+    // 1. Play sound IMMEDIATELY (while still in user gesture context)
+    // We don't wait for the fade because Safari will block it if we do.
+    triggerSound(index);
+
+    // 2. Perform visual transition
     transitionOverlay.classList.add('active');
     mainImage.classList.add('fade-out');
 
@@ -110,11 +109,6 @@ function goToImage(index) {
         currentIndex = index;
         loadCurrentImage();
 
-        // Play the letter sound after transition
-        const currentPair = mediaPairs[currentIndex];
-        playLetterSound(currentPair.sound, currentPair.letter, currentPair.word);
-
-        // Fade in new image
         setTimeout(() => {
             transitionOverlay.classList.remove('active');
             mainImage.classList.remove('fade-out');
@@ -128,23 +122,20 @@ function goToImage(index) {
     }, 400);
 }
 
-// Load current image
 function loadCurrentImage() {
     mainImage.classList.add('loading');
-    const currentPair = mediaPairs[currentIndex];
-    mainImage.src = currentPair.image;
-    mainImage.alt = `Letter ${currentPair.letter} - ${currentPair.word}`;
-    mainImage.onload = () => {
-        mainImage.classList.remove('loading');
-    };
+    const pair = mediaPairs[currentIndex];
+    mainImage.src = pair.image;
+    mainImage.alt = `Letter ${pair.letter} - ${pair.word}`;
+    mainImage.onload = () => mainImage.classList.remove('loading');
 }
 
-// Handle click to advance
 function handleClick(e) {
-    // First, unlock audio if needed
+    // Required for iOS Safari:
+    // Any audio playback MUST be triggered synchronously in the click handler.
+
     if (!audioUnlocked) {
         unlockAudio();
-        // We stay on the first letter (A) for the first click to let user hear it
         return;
     }
 
@@ -154,34 +145,22 @@ function handleClick(e) {
     goToImage(nextIndex);
 }
 
-// Initialize
 function init() {
     loadCurrentImage();
-
-    // AUTO-PLAY REMOVED: Safari blocks audio that isn't triggered by a user click.
-    // The first click on the image will "unlock" audio and play the first letter.
-
     imageContainer.addEventListener('click', handleClick);
 
-    // Keyboard navigation
+    // Handle Space/Arrow keys
     document.addEventListener('keydown', (e) => {
-        // If they use keyboard, we should also try to unlock
-        if (!audioUnlocked) {
-            unlockAudio();
-            return;
-        }
+        if (!audioUnlocked) unlockAudio();
 
         if (e.key === 'ArrowRight' || e.key === ' ') {
             e.preventDefault();
-            const nextIndex = (currentIndex + 1) % mediaPairs.length;
-            goToImage(nextIndex);
+            goToImage((currentIndex + 1) % mediaPairs.length);
         } else if (e.key === 'ArrowLeft') {
             e.preventDefault();
-            const prevIndex = (currentIndex - 1 + mediaPairs.length) % mediaPairs.length;
-            goToImage(prevIndex);
+            goToImage((currentIndex - 1 + mediaPairs.length) % mediaPairs.length);
         }
     });
 }
 
-// Start when DOM is ready
 document.addEventListener('DOMContentLoaded', init);
