@@ -41,6 +41,7 @@ const mediaPairs = alphabetData.map(item => ({
 let currentIndex = 0;
 let isTransitioning = false;
 let currentAudio = null;
+let audioUnlocked = false;
 
 // DOM Elements
 const mainImage = document.getElementById('main-image');
@@ -48,6 +49,7 @@ const imageContainer = document.getElementById('image-container');
 const transitionOverlay = document.getElementById('transition-overlay');
 
 // Play the letter sound
+// IMPORTANT: For Mobile Safari, this must be called directly from a user gesture (click/tap)
 function playLetterSound(soundPath, letter, word) {
     // Stop any current audio
     if (currentAudio) {
@@ -59,14 +61,18 @@ function playLetterSound(soundPath, letter, word) {
     currentAudio = new Audio(soundPath);
     currentAudio.volume = 1.0;
 
-    currentAudio.play().catch(error => {
-        // If audio file doesn't exist, fall back to speech synthesis
-        console.log('Audio file not found, using speech synthesis fallback');
-        speakLetterFallback(letter, word);
-    });
+    const playPromise = currentAudio.play();
+
+    if (playPromise !== undefined) {
+        playPromise.catch(error => {
+            // If audio file doesn't exist or is blocked, fall back to speech synthesis
+            console.log('Audio playback blocked or file not found:', error);
+            speakLetterFallback(letter, word);
+        });
+    }
 }
 
-// Fallback to speech synthesis if audio file doesn't exist
+// Fallback to speech synthesis
 function speakLetterFallback(letter, word) {
     const speechSynthesis = window.speechSynthesis;
     speechSynthesis.cancel();
@@ -78,6 +84,17 @@ function speakLetterFallback(letter, word) {
     utterance.volume = 1.0;
 
     speechSynthesis.speak(utterance);
+}
+
+// Unlock audio for Safari (plays current sound once to grant permission)
+function unlockAudio() {
+    if (audioUnlocked) return;
+
+    // Play the current letter sound immediately
+    const currentPair = mediaPairs[currentIndex];
+    playLetterSound(currentPair.sound, currentPair.letter, currentPair.word);
+
+    audioUnlocked = true;
 }
 
 // Go to specific image
@@ -124,6 +141,13 @@ function loadCurrentImage() {
 
 // Handle click to advance
 function handleClick(e) {
+    // First, unlock audio if needed
+    if (!audioUnlocked) {
+        unlockAudio();
+        // We stay on the first letter (A) for the first click to let user hear it
+        return;
+    }
+
     if (isTransitioning) return;
 
     const nextIndex = (currentIndex + 1) % mediaPairs.length;
@@ -134,16 +158,19 @@ function handleClick(e) {
 function init() {
     loadCurrentImage();
 
-    // Play the first letter sound
-    setTimeout(() => {
-        const currentPair = mediaPairs[currentIndex];
-        playLetterSound(currentPair.sound, currentPair.letter, currentPair.word);
-    }, 500);
+    // AUTO-PLAY REMOVED: Safari blocks audio that isn't triggered by a user click.
+    // The first click on the image will "unlock" audio and play the first letter.
 
     imageContainer.addEventListener('click', handleClick);
 
     // Keyboard navigation
     document.addEventListener('keydown', (e) => {
+        // If they use keyboard, we should also try to unlock
+        if (!audioUnlocked) {
+            unlockAudio();
+            return;
+        }
+
         if (e.key === 'ArrowRight' || e.key === ' ') {
             e.preventDefault();
             const nextIndex = (currentIndex + 1) % mediaPairs.length;
